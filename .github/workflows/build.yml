@@ -1,0 +1,50 @@
+name: Build DeepSeekChat
+
+# 推 tag 如 v1.0.0 触发构建，三平台并行出包
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: DeepSeekChat-linux
+            artifact_path: dist/DeepSeekChat
+          - os: macos-latest
+            artifact_name: DeepSeekChat-macos
+            artifact_path: dist/DeepSeekChat
+          - os: windows-latest
+            artifact_name: DeepSeekChat-windows
+            artifact_path: dist/DeepSeekChat.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Build with PyInstaller
+        run: python -m PyInstaller --onefile --windowed --name DeepSeekChat --clean DeepSeekChat.py
+        working-directory: DeepSeekChat
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: DeepSeekChat/${{ matrix.artifact_path }}
