@@ -1,0 +1,25 @@
+# 构建产物
+dist/
+dist2/
+dist3/
+dist4/
+build/
+*.spec
+__pycache__/
+*.pyc
+
+# 配置文件（含 API Key）
+config.toml
+config.json
+*.secret
+
+# 系统文件
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

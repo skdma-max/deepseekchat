@@ -1,0 +1,11 @@
+# DeepSeekChat 配置文件
+# 将此文件重命名为 config.toml 并填入你的 API Key
+
+# DeepSeek API Key（必填）
+api_key = "sk-your-api-key-here"
+
+# 默认模型（可选，默认 deepseek-chat）
+default_text_model = "deepseek-chat"
+
+# 可选模型：deepseek-chat, deepseek-reasoner
+# 应用内可点击右上角绿色标签切换
