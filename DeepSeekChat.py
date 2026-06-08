@@ -8,6 +8,35 @@ from tkinter import messagebox
 from pathlib import Path
 from collections import deque
 
+# ── 跨平台字体 ──
+def _get_platform_fonts():
+    """返回当前平台的推荐中文字体列表（第一个可用的将被使用）"""
+    if sys.platform.startswith("win"):
+        return ["Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "SimSun", "TkDefaultFont"]
+    elif sys.platform.startswith("darwin"):
+        return ["PingFang SC", "Heiti SC", "STHeiti", "Apple LiSung", "TkDefaultFont"]
+    else:  # Linux
+        return ["Noto Sans CJK SC", "WenQuanYi Micro Hei", "WenQuanYi Zen Hei",
+                "Noto Sans SC", "Source Han Sans SC", "Sans", "TkDefaultFont"]
+
+def _get_best_font(family_list, size, bold=False, italic=False):
+    """从列表中选取第一个实际可用的字体，否则回退到系统默认"""
+    import tkinter.font as tkfont
+    available = set(tkfont.families())
+    for f in family_list:
+        if f in available:
+            sl = ""
+            if bold: sl += " bold"
+            if italic: sl += " italic"
+            return (f, size) + (sl.strip(),) if sl else (f, size)
+    # 回退
+    sl = ""
+    if bold: sl += " bold"
+    if italic: sl += " italic"
+    return ("TkDefaultFont", size) + (sl.strip(),) if sl else ("TkDefaultFont", size)
+
+_FONT_LIST = _get_platform_fonts()
+
 # ── 依赖 ──
 MISSING=[]
 try:import tomllib
@@ -157,7 +186,8 @@ class SubAgent:
 # ════════════════ 主应用 ════════════════
 class DeepSeekChatApp:
     C={"bg_main":"#1e1e2e","bg_chat":"#181825","bg_input":"#11111b","bg_panel":"#161622","bg_status":"#11111b","bg_bar":"#1a1a2e","panel_hdr":"#1a1a2e","text_1":"#cdd6f4","text_2":"#a6adc8","accent":"#89b4fa","accent2":"#a6e3a1","border":"#45475a","task_done":"#585b70","prog_bg":"#313244","prog_fg":"#a6e3a1","tool_out":"#f9e2af","tool_err":"#f38ba8","agent":"#cba6f7"}
-    FN=("Microsoft YaHei UI",11);FS=("Microsoft YaHei UI",10);FT=("Microsoft YaHei UI",9);FB=("Microsoft YaHei UI",11,"bold");FTi=("Microsoft YaHei UI",13,"bold")
+    FN=_get_best_font(_FONT_LIST,11);FS=_get_best_font(_FONT_LIST,10);FT=_get_best_font(_FONT_LIST,9)
+    FB=_get_best_font(_FONT_LIST,11,bold=True);FTi=_get_best_font(_FONT_LIST,13,bold=True)
 
     def __init__(self):
         self.root=tk.Tk();self.root.title("DeepSeekChat");self.root.geometry("1100x680");self.root.minsize(800,500)
@@ -203,13 +233,13 @@ class DeepSeekChatApp:
     # ════════════════ UI ════════════════
     def setup_ui(self):
         hdr=tk.Frame(self.root,bg=self.C["bg_main"],height=38);hdr.pack(fill=tk.X,padx=16,pady=(8,0));hdr.pack_propagate(False)
-        tk.Label(hdr,text="🧠 DeepSeekChat",font=self.FTi,fg=self.C["accent"],bg=self.C["bg_main"]).pack(side=tk.LEFT)
+        tk.Label(hdr,text="🐋 DeepSeekChat",font=self.FTi,fg=self.C["accent"],bg=self.C["bg_main"]).pack(side=tk.LEFT)
         rg=tk.Frame(hdr,bg=self.C["bg_main"]);rg.pack(side=tk.RIGHT)
         mb=tk.Frame(rg,bg=self.C["border"],padx=1,pady=1);mb.pack(side=tk.RIGHT,padx=(6,0))
         self.mode_label=tk.Label(mb,text=self.mode,font=self.FT,fg=self.C["accent"],bg="#2a2a3e",padx=8,pady=1,cursor="hand2");self.mode_label.pack();self.mode_label.bind("<Button-1>",lambda e:self._show_mode_menu(e))
         vb=tk.Frame(rg,bg=self.C["border"],padx=1,pady=1);vb.pack(side=tk.RIGHT,padx=(6,0))
         self.model_label=tk.Label(vb,text=self.display_model,font=self.FT,fg=self.C["accent2"],bg="#2a2a3e",padx=8,pady=1,cursor="hand2");self.model_label.pack();self.model_label.bind("<Button-1>",lambda e:self._show_model_menu(e))
-        self.status_light=tk.Label(rg,text="●",font=("Microsoft YaHei UI",12),fg="#a6e3a1",bg=self.C["bg_main"]);self.status_light.pack(side=tk.RIGHT,padx=(6,2))
+        self.status_light=tk.Label(rg,text="●",font=_get_best_font(_FONT_LIST,12),fg="#a6e3a1",bg=self.C["bg_main"]);self.status_light.pack(side=tk.RIGHT,padx=(6,2))
         tk.Frame(self.root,bg=self.C["border"],height=1).pack(fill=tk.X,padx=12,pady=2)
         self._build_bar()
         self.pane=tk.PanedWindow(self.root,orient=tk.HORIZONTAL,bg=self.C["border"],sashwidth=4,sashrelief=tk.FLAT);self.pane.pack(fill=tk.BOTH,expand=True,padx=12)
@@ -222,7 +252,7 @@ class DeepSeekChatApp:
         for tag,fg in[("user_label","#60a5fa"),("ai_label","#a6e3a1"),("user_msg","#bfdbfe"),("ai_msg","#cdd6f4"),("system_msg","#6c7086"),("tool_out","#f9e2af"),("tool_err","#f38ba8"),("agent_msg","#cba6f7")]:
             kw={"foreground":fg}
             if"label"in tag:kw["font"]=self.FB
-            if"system"in tag:kw.update(font=("Microsoft YaHei UI",9,"italic"),justify=tk.CENTER)
+            if"system"in tag:kw.update(font=_get_best_font(_FONT_LIST,9,italic=True),justify=tk.CENTER)
             self.chat_text.tag_configure(tag,**kw)
         inf=tk.Frame(right,bg=self.C["bg_input"]);inf.pack(fill=tk.X,padx=0,pady=(4,0))
         self.input_text=tk.Text(inf,height=3,font=self.FN,bg=self.C["bg_input"],fg=self.C["text_1"],insertbackground=self.C["accent"],relief="flat",bd=0,padx=12,pady=10,wrap=tk.WORD);self.input_text.pack(side=tk.LEFT,fill=tk.X,expand=True,padx=(0,8))
@@ -261,7 +291,7 @@ class DeepSeekChatApp:
             lbl.pack(side=tk.LEFT,padx=1);lbl.bind("<Button-1>",lambda e,n=n:self._sw_st(dlg,n));self._st[n]=lbl
         tk.Frame(dlg,bg=self.C["border"],height=1).pack(fill=tk.X,padx=12,pady=4)
         self._stext=tk.Text(dlg,wrap=tk.WORD,font=self.FS,bg=self.C["bg_chat"],fg=self.C["text_1"],relief="flat",bd=0,padx=16,pady=12,state=tk.DISABLED,cursor="arrow");self._stext.pack(fill=tk.BOTH,expand=True,padx=12,pady=(0,4))
-        self._stext.tag_configure("key",foreground=self.C["accent2"],font=("Microsoft YaHei UI",10,"bold"));self._stext.tag_configure("desc",foreground=self.C["text_1"])
+        self._stext.tag_configure("key",foreground=self.C["accent2"],font=_get_best_font(_FONT_LIST,10,bold=True));self._stext.tag_configure("desc",foreground=self.C["text_1"])
         self._fl_st(tabs[0])
         tk.Button(dlg,text="关闭",command=dlg.destroy,bg=self.C["border"],fg=self.C["text_1"],font=self.FS,relief="flat",padx=20,pady=4,cursor="hand2").pack(pady=(0,10))
     def _sw_st(self,dlg,name):
@@ -307,7 +337,7 @@ class DeepSeekChatApp:
         self.pg_lb=tk.Label(bf,text="0%",font=self.FS,fg=self.C["text_2"],bg=self.C["bg_panel"]);self.pg_lb.pack()
         af=tk.Frame(c,bg=self.C["bg_panel"]);af.pack(fill=tk.X,side=tk.BOTTOM,padx=10,pady=(0,10))
         self.ae=tk.Entry(af,font=self.FS,bg=self.C["bg_input"],fg=self.C["text_1"],insertbackground=self.C["accent"],relief="flat",bd=0);self.ae.pack(side=tk.LEFT,fill=tk.X,expand=True,ipady=4,padx=(0,6));self.ae.bind("<Return>",lambda e:self._add_tm())
-        tk.Button(af,text="＋",command=self._add_tm,bg=self.C["accent2"],fg="#1e1e2e",font=("Microsoft YaHei UI",12,"bold"),relief="flat",padx=8,cursor="hand2").pack(side=tk.RIGHT)
+        tk.Button(af,text="＋",command=self._add_tm,bg=self.C["accent2"],fg="#1e1e2e",font=_get_best_font(_FONT_LIST,12,bold=True),relief="flat",padx=8,cursor="hand2").pack(side=tk.RIGHT)
         self._rf_wf();self._draw_pg()
     def _mw(self,e):
         w=e.widget
@@ -360,9 +390,9 @@ class DeepSeekChatApp:
                 r=tk.Frame(self.ag_in,bg=self.C["bg_panel"]);r.pack(fill=tk.X,padx=8,pady=2)
                 st_icon={"running":"◉","done":"●","failed":"✕","cancelled":"○"}.get(a.status,"○")
                 st_clr={"running":self.C["accent"],"done":self.C["accent2"],"failed":self.C["tool_err"],"cancelled":self.C["task_done"]}.get(a.status,self.C["text_2"])
-                tk.Label(r,text=st_icon,font=("Microsoft YaHei UI",10),fg=st_clr,bg=self.C["bg_panel"],padx=2).pack(side=tk.LEFT)
+                tk.Label(r,text=st_icon,font=_get_best_font(_FONT_LIST,10),fg=st_clr,bg=self.C["bg_panel"],padx=2).pack(side=tk.LEFT)
                 cf=tk.Frame(r,bg=self.C["bg_panel"]);cf.pack(side=tk.LEFT,fill=tk.X,expand=True,padx=4)
-                tk.Label(cf,text=f"#{a.id} {a.task[:40]}",font=("Microsoft YaHei UI",9),fg=self.C["text_1"],bg=self.C["bg_panel"],anchor="w").pack(anchor="w")
+                tk.Label(cf,text=f"#{a.id} {a.task[:40]}",font=_get_best_font(_FONT_LIST,9),fg=self.C["text_1"],bg=self.C["bg_panel"],anchor="w").pack(anchor="w")
                 elapsed=int(time.time()-a.start_time)
                 tk.Label(cf,text=f"{a.status} · {elapsed}s",font=self.FT,fg=self.C["text_2"],bg=self.C["bg_panel"]).pack(anchor="w")
         rn=sum(1 for a in self.subagents.values()if a.status=="running")
@@ -391,10 +421,10 @@ class DeepSeekChatApp:
     def _mk_wr(self,task):
         r=tk.Frame(self.wf_in,bg=self.C["bg_panel"]);r.pack(fill=tk.X,padx=8,pady=1)
         chk="☑"if task["done"]else"☐";cc=self.C["task_done"]if task["done"]else self.C["accent2"]
-        c=tk.Label(r,text=chk,font=("Microsoft YaHei UI",12),fg=cc,bg=self.C["bg_panel"],cursor="hand2");c.pack(side=tk.LEFT);c.bind("<Button-1>",lambda e,tid=task["id"]:self._tg_t(tid))
-        fg=self.C["task_done"]if task["done"]else self.C["text_1"];fn=("Microsoft YaHei UI",10,"overstrike")if task["done"]else("Microsoft YaHei UI",10)
+        c=tk.Label(r,text=chk,font=_get_best_font(_FONT_LIST,12),fg=cc,bg=self.C["bg_panel"],cursor="hand2");c.pack(side=tk.LEFT);c.bind("<Button-1>",lambda e,tid=task["id"]:self._tg_t(tid))
+        fg=self.C["task_done"]if task["done"]else self.C["text_1"];fn=_get_best_font(_FONT_LIST,10,italic=True)if task["done"]else _get_best_font(_FONT_LIST,10)
         tk.Label(r,text=task["text"],font=fn,fg=fg,bg=self.C["bg_panel"],anchor="w").pack(side=tk.LEFT,fill=tk.X,expand=True,padx=(4,4))
-        x=tk.Label(r,text="✕",font=("Microsoft YaHei UI",9),fg=self.C["task_done"],bg=self.C["bg_panel"],cursor="hand2");x.pack(side=tk.RIGHT);x.bind("<Button-1>",lambda e,tid=task["id"]:self._dl_t(tid))
+        x=tk.Label(r,text="✕",font=_get_best_font(_FONT_LIST,9),fg=self.C["task_done"],bg=self.C["bg_panel"],cursor="hand2");x.pack(side=tk.RIGHT);x.bind("<Button-1>",lambda e,tid=task["id"]:self._dl_t(tid))
 
     # ── 持久化任务 ──
     def _new_at(self):
@@ -427,12 +457,12 @@ class DeepSeekChatApp:
     def _mk_ar(self,task):
         r=tk.Frame(self.ts_in,bg=self.C["bg_panel"]);r.pack(fill=tk.X,padx=8,pady=2)
         im={"pending":("○",self.C["tool_out"]),"done":("●",self.C["accent2"])};ic,iclr=im.get(task["status"],("○",self.C["text_2"]))
-        s=tk.Label(r,text=ic,font=("Microsoft YaHei UI",10),fg=iclr,bg=self.C["bg_panel"],cursor="hand2",padx=2);s.pack(side=tk.LEFT);s.bind("<Button-1>",lambda e,tid=task["id"]:self._tg_at(tid))
+        s=tk.Label(r,text=ic,font=_get_best_font(_FONT_LIST,10),fg=iclr,bg=self.C["bg_panel"],cursor="hand2",padx=2);s.pack(side=tk.LEFT);s.bind("<Button-1>",lambda e,tid=task["id"]:self._tg_at(tid))
         cf=tk.Frame(r,bg=self.C["bg_panel"]);cf.pack(side=tk.LEFT,fill=tk.X,expand=True,padx=(4,4))
-        fg=self.C["task_done"]if task["status"]=="done"else self.C["text_1"];fn=("Microsoft YaHei UI",10,"overstrike")if task["status"]=="done"else("Microsoft YaHei UI",10)
+        fg=self.C["task_done"]if task["status"]=="done"else self.C["text_1"];fn=_get_best_font(_FONT_LIST,10,italic=True)if task["status"]=="done"else _get_best_font(_FONT_LIST,10)
         tk.Label(cf,text=task["title"],font=fn,fg=fg,bg=self.C["bg_panel"],anchor="w").pack(anchor="w")
         tk.Label(cf,text=task.get("created_at",""),font=self.FT,fg=self.C["text_2"],bg=self.C["bg_panel"]).pack(anchor="w")
-        x=tk.Label(r,text="✕",font=("Microsoft YaHei UI",9),fg=self.C["task_done"],bg=self.C["bg_panel"],cursor="hand2");x.pack(side=tk.RIGHT);x.bind("<Button-1>",lambda e,tid=task["id"]:self._dl_at(tid))
+        x=tk.Label(r,text="✕",font=_get_best_font(_FONT_LIST,9),fg=self.C["task_done"],bg=self.C["bg_panel"],cursor="hand2");x.pack(side=tk.RIGHT);x.bind("<Button-1>",lambda e,tid=task["id"]:self._dl_at(tid))
 
     # ── 进度 ──
     def _up_pg(self):
@@ -444,7 +474,7 @@ class DeepSeekChatApp:
         self.pg_cv.delete("all");self.pg_cv.create_rectangle(0,0,w,18,fill=self.C["prog_bg"],outline="")
         fw=int(w*self.progress_pct/100)
         if fw>0:self.pg_cv.create_rectangle(0,0,fw,18,fill=self.C["prog_fg"],outline="")
-        if fw>30:self.pg_cv.create_text(fw//2,9,text=f"{self.progress_pct}%",font=("Microsoft YaHei UI",9,"bold"),fill="#181825")
+        if fw>30:self.pg_cv.create_text(fw//2,9,text=f"{self.progress_pct}%",font=_get_best_font(_FONT_LIST,9,bold=True),fill="#181825")
 
     # ── 标记 ──
     def _proc_tags(self,text):

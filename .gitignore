@@ -3,6 +3,9 @@ dist/
 dist2/
 dist3/
 dist4/
+dist5/
+dist6/
+dist7/
 build/
 *.spec
 __pycache__/
